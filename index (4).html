@@ -1,0 +1,191 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Absensi Rapat</title>
+<style>
+[hidden]{display:none!important}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:#f1f3f6;color:#1f2937}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:#fff;border-radius:12px;padding:18px;margin:0 0 14px;box-shadow:0 1px 3px #0001;width:100%}.center .card{max-width:440px;margin:0}
+h2{color:#0b2545;margin:0 0 10px}label{display:block;margin:12px 0 4px;font-weight:600;font-size:13px}
+input,select{width:100%;padding:11px;border:1px solid #cbd2dc;border-radius:8px;font:inherit;margin-bottom:6px}
+button{background:#0b2545;color:#fff;border:0;border-radius:8px;padding:11px 16px;font:inherit;cursor:pointer}button:disabled{opacity:.5}
+button.sec{background:#e5e7eb;color:#0b2545;padding:7px 10px}
+.err{color:#b91c1c;min-height:18px}.muted{color:#6b7280}img#pv{max-width:100%;border-radius:8px;margin-top:6px}
+.receipt{background:#eef3fb;border-radius:10px;padding:14px;text-align:center}
+.b{padding:3px 9px;border-radius:99px;font-size:12px;font-weight:700;background:#e5e7eb}.b.open{background:#d1fae5;color:#065f46}.b.closed{background:#fee2e2;color:#991b1b}
+#app{display:flex;min-height:100vh}aside{width:200px;background:#0b2545;color:#fff;padding:18px 0;flex-shrink:0}aside h3{padding:0 18px}
+aside a{display:block;padding:12px 18px;cursor:pointer}aside a.on,aside a:hover{background:#13396b}
+main{flex:1;padding:20px;min-width:0}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row input,.row select{width:auto;flex:1;min-width:130px;margin:0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap}th{color:#6b7280;font-size:12px}
+.stats{display:flex;gap:10px;margin-bottom:14px}.stats div{flex:1;background:#fff;border-radius:12px;padding:12px;text-align:center}.stats b{display:block;font-size:24px;color:#0b2545}
+.otp{font:700 30px monospace;letter-spacing:6px;color:#0b2545;background:#eef3fb;padding:4px 12px;border-radius:8px}#back{cursor:pointer;color:#0b2545}
+@media(max-width:700px){#app{flex-direction:column}aside{width:100%;display:flex;align-items:center;padding:0}aside h3{display:none}aside a{padding:14px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head>
+<body>
+<p id="boot" style="padding:20px;font-family:sans-serif">Memuat…</p>
+<script>window.onerror=(m)=>{var b=document.getElementById('boot');b.hidden=false;b.style.color='#b91c1c';b.textContent='Error: '+m}</script>
+<div id="pub" class="center" hidden><div class="card" id="c">Memuat…</div></div>
+<div id="login" class="center" hidden><form id="lf" class="card"><h2>Login Admin</h2><input id="u" type="email" placeholder="Email" required><input id="p" type="password" placeholder="Password" required><button style="width:100%">Masuk</button><p id="le" class="err"></p></form></div>
+<div id="app" hidden><aside><h3>Absensi Rapat</h3><a data-v="meetings" class="on">Rapat</a><a data-v="people">Peserta</a><a id="out">Keluar</a></aside><main id="main"></main></div>
+<div id="setup" class="center" hidden><div class="card" style="max-width:760px"><h2>Setup Database</h2><p class="muted">Salin SQL ini, tempel di Supabase → SQL Editor → Run. Cukup sekali.</p><button id="cp">Salin SQL</button><pre id="sqlv" style="max-height:50vh;overflow:auto;background:#f1f3f6;padding:10px;border-radius:8px;font-size:12px;white-space:pre-wrap"></pre></div></div>
+<script type="text/plain" id="sql">
+create table participants(id serial primary key, no int unique, name text not null, active bool default true);
+insert into participants(no,name) values
+(1,'Syabilla Elf Mika'),(2,'Ahmad Mirza Maulana'),(3,'Nathania Mawrin Rehuellah'),(4,'Gracia Juli Anita'),(5,'Nadina'),
+(6,'Azzahra Imania Rofika'),(7,'Adly Azzam'),(8,'Calisya Ruby Almeida'),(9,'Sutrio'),(10,'Safira Nur Fadillah'),
+(11,'Adly Fadilah'),(12,'Ziezian'),(13,'Muh.Malbi'),(14,'Elvita Meliani Gowanda'),(15,'Ayudya Cinta'),
+(16,'Fadil'),(17,'Olivia Dice Ariyanto'),(18,'Amelia Lestiani'),(19,'Elang'),(20,'Ricky'),
+(21,'Putri Dwi'),(22,'Mulyo Marsudi Utomo'),(23,'Muhammad Ibnu Habibi'),(24,'Galuh Sultan'),(25,'Alea & Osis (Wanita)'),
+(26,'Riko'),(27,'Rapa Raihan Nur Akbar'),(28,'Muhammad Riyan'),(29,'Zalfa Naqiyah Fairuz'),(30,'Zahra Aura Putri'),
+(31,'Jennifer Rose'),(32,'Jerry Ferdinad Liko'),(33,'Renita Afrylia Putri'),(34,'Arfella Solehati'),(35,'Attiya Khanza');
+create table meetings(id uuid primary key default gen_random_uuid(), title text not null, date date not null, time time not null, location text not null,
+ status text not null default 'draft' check (status in ('draft','open','closed')), otp_code text, otp_expires timestamptz, created_at timestamptz default now());
+create table attendance(id serial primary key, meeting_id uuid references meetings(id) on delete cascade, participant_id int references participants(id),
+ attended_at timestamptz not null default now(), photo text not null, unique(meeting_id, participant_id));
+create table otp_attempts(id serial primary key, key text not null, created_at timestamptz default now());
+create index on otp_attempts(key, created_at);
+
+-- RLS: publik (anon) TIDAK bisa akses tabel langsung; hanya admin login (authenticated)
+alter table participants enable row level security; alter table meetings enable row level security;
+alter table attendance enable row level security; alter table otp_attempts enable row level security;
+create policy adm on participants for all to authenticated using (true) with check (true);
+create policy adm on meetings for all to authenticated using (true) with check (true);
+create policy adm on attendance for all to authenticated using (true) with check (true);
+
+-- Publik: info rapat aktif (tanpa OTP)
+create function get_active() returns json language sql security definer set search_path=public as $$
+ select json_build_object(
+  'meeting',(select row_to_json(m) from (select id,title,date,time,location from meetings where status='open' limit 1) m),
+  'participants',(select coalesce(json_agg(p order by p.no),'[]'::json) from (select id,no,name from participants where active) p),
+  'done',(select coalesce(json_agg(a.participant_id),'[]'::json) from attendance a join meetings m on m.id=a.meeting_id where m.status='open'));
+$$;
+
+-- Publik: absen. OTP, batas percobaan, duplikat, dan waktu semua divalidasi di server (Postgres)
+create function submit_attendance(p_pid int, p_otp text, p_photo text) returns json language plpgsql security definer set search_path=public as $$
+declare m meetings; k text; n text; t timestamptz;
+begin
+ select * into m from meetings where status='open' limit 1;
+ if not found then return json_build_object('error','Absensi sedang ditutup'); end if;
+ select name into n from participants where id=p_pid and active;
+ if n is null then return json_build_object('error','Peserta tidak valid'); end if;
+ k := m.id||':'||p_pid;
+ if (select count(*) from otp_attempts where key=k and created_at>now()-interval '10 minutes')>=5 then
+  return json_build_object('error','Terlalu banyak percobaan. Coba lagi 10 menit lagi.'); end if;
+ if m.otp_code is null or m.otp_expires<now() or m.otp_code<>trim(p_otp) then
+  insert into otp_attempts(key) values(k);
+  return json_build_object('error','Kode OTP salah atau sudah kedaluwarsa'); end if;
+ if exists(select 1 from attendance where meeting_id=m.id and participant_id=p_pid) then
+  return json_build_object('error','Kamu sudah absen di rapat ini'); end if;
+ if p_photo !~ '^data:image/jpeg;base64,' or length(p_photo)>600000 then
+  return json_build_object('error','Foto bukti tidak valid / terlalu besar'); end if;
+ insert into attendance(meeting_id,participant_id,photo) values(m.id,p_pid,p_photo) returning attended_at into t;
+ return json_build_object('name',n,'attended_at',t);
+exception when unique_violation then return json_build_object('error','Kamu sudah absen di rapat ini');
+end $$;
+
+-- Admin: buat/ganti OTP (acak di server) dan ubah status rapat
+create function admin_make_otp(p_id uuid, p_min int) returns json language plpgsql security definer set search_path=public as $$
+declare c text := lpad((('x'||left(replace(gen_random_uuid()::text,'-',''),8))::bit(32)::bigint % 1000000)::text,6,'0');
+begin
+ update meetings set otp_code=c, otp_expires=now()+make_interval(mins=>least(3,greatest(1,p_min))) where id=p_id and status='open';
+ if not found then raise exception 'Buka absensi terlebih dahulu'; end if;
+ return json_build_object('otp',c);
+end $$;
+create function admin_set_status(p_id uuid, p_status text) returns void language plpgsql security definer set search_path=public as $$
+begin
+ if p_status not in ('draft','open','closed') then raise exception 'Status tidak valid'; end if;
+ if p_status='open' then update meetings set status='closed',otp_code=null,otp_expires=null where status='open' and id<>p_id; end if;
+ update meetings set status=p_status, otp_code=case when p_status='open' then otp_code end, otp_expires=case when p_status='open' then otp_expires end where id=p_id;
+end $$;
+
+revoke all on function admin_make_otp(uuid,int), admin_set_status(uuid,text) from public, anon;
+grant execute on function admin_make_otp(uuid,int), admin_set_status(uuid,text) to authenticated;
+grant execute on function get_active(), submit_attendance(int,text,text) to anon, authenticated;
+</script>
+<script>
+const SUPABASE_URL='https://gshgvmcdhmdjcrgbajyx.supabase.co',SUPABASE_KEY='sb_publishable_YzS8ZLjTvEgKnoP3d_rCZg_MH6njNmo';
+if(!window.supabase)throw new Error('Library Supabase gagal dimuat, cek koneksi internet');
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=t=>t?new Date(t).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'medium',hour12:false}):'-';
+const ST={draft:'Draft',open:'Dibuka',closed:'Ditutup'};let timer,photo;
+const ck=async x=>{const r=await x;if(r.error)throw new Error(r.error.message);return r.data};
+window.zoom=s=>{const o=document.createElement('div');o.style='position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:9';o.innerHTML=`<img src="${s}" style="max-width:95%;max-height:95%">`;o.onclick=()=>o.remove();document.body.append(o)};
+
+async function route(){clearInterval(timer);$('#boot').hidden=true;const adm=location.hash==='#admin',st=location.hash==='#setup';$('#setup').hidden=!st;$('#pub').hidden=adm||st;
+if(adm){const{data}=await sb.auth.getSession();$('#login').hidden=!!data.session;$('#app').hidden=!data.session;if(data.session)meetings()}
+else{$('#login').hidden=$('#app').hidden=true;if(!st)pub()}}
+addEventListener('hashchange',route);
+
+/* ===== PESERTA ===== */
+async function pub(){const c=$('#c');
+const{data:d,error}=await sb.rpc('get_active');if(error){c.textContent='Gagal terhubung ke server';return}
+if(!d.meeting){c.innerHTML='<h2>Absensi Rapat</h2><p>Belum ada rapat yang dibuka. Tunggu admin membuka absensi.</p>';return}
+const m=d.meeting;
+c.innerHTML=`<h2>${esc(m.title)}</h2><p class="muted">${m.date} · ${m.time.slice(0,5)} · ${esc(m.location)}</p>
+<form id="f"><label>Nama</label><select id="n" required><option value="">Pilih nama…</option>${d.participants.map(p=>{const x=d.done.includes(p.id);return`<option value="${p.id}" ${x?'disabled':''}>${p.no}. ${esc(p.name)}${x?' ✓ sudah absen':''}</option>`}).join('')}</select>
+<label>Kode OTP dari admin</label><input id="o" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required>
+<label>Foto bukti kehadiran</label><input id="ph" type="file" accept="image/*" capture="user" required><img id="pv" hidden>
+<button id="sb" style="width:100%;margin-top:10px">Kirim Absensi</button><p id="e" class="err"></p></form>`;
+photo=null;
+$('#ph').onchange=e=>{const f=e.target.files[0];if(!f)return;photo=null;const im=new Image();im.onload=()=>{const s=Math.min(1,640/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=im.width*s;cv.height=im.height*s;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);photo=cv.toDataURL('image/jpeg',.6);$('#pv').src=photo;$('#pv').hidden=false};im.src=URL.createObjectURL(f)};
+$('#f').onsubmit=async e=>{e.preventDefault();if(!photo){$('#e').textContent='Foto belum siap, coba pilih ulang';return}
+$('#sb').disabled=true;$('#e').textContent='';
+const{data:x,error}=await sb.rpc('submit_attendance',{p_pid:+$('#n').value,p_otp:$('#o').value,p_photo:photo});
+if(error||x.error){$('#e').textContent=x?.error||'Koneksi gagal, coba lagi';$('#sb').disabled=false;return}
+const t=new Date(x.attended_at),z={timeZone:'Asia/Jakarta'};
+c.innerHTML=`<h2>✔ Absensi Berhasil</h2><div class="receipt"><p><b>${esc(x.name)}</b></p><p>${t.toLocaleDateString('id-ID',{...z,dateStyle:'full'})}</p><p>${t.toLocaleTimeString('id-ID',{...z,hour12:false})} WIB</p><span class="b open">HADIR</span></div>`}}
+
+/* ===== ADMIN ===== */
+$('#lf').onsubmit=async e=>{e.preventDefault();const{error}=await sb.auth.signInWithPassword({email:$('#u').value,password:$('#p').value});if(error)$('#le').textContent='Email atau password salah';else route()};
+$('#out').onclick=async()=>{await sb.auth.signOut();route()};
+$$('aside [data-v]').forEach(a=>a.onclick=()=>{$$('aside a').forEach(x=>x.classList.remove('on'));a.classList.add('on');a.dataset.v==='people'?people():meetings()});
+
+async function meetings(){clearInterval(timer);
+const ms=await ck(sb.from('meetings').select('*,attendance(count)').order('date',{ascending:false}).order('time',{ascending:false}));
+$('#main').innerHTML=`<h2>Rapat</h2><form id="mf" class="card row"><input name="title" placeholder="Nama rapat" required><input name="date" type="date" required><input name="time" type="time" required><input name="location" placeholder="Lokasi" required><button>Buat Rapat</button></form>
+<div class="card scroll"><table><tr><th>Rapat</th><th>Jadwal</th><th>Lokasi</th><th>Status</th><th>Hadir</th><th></th></tr>${ms.map(m=>`<tr><td>${esc(m.title)}</td><td>${m.date} ${m.time.slice(0,5)}</td><td>${esc(m.location)}</td><td><span class="b ${m.status}">${ST[m.status]}</span></td><td>${m.attendance[0].count}</td><td><button data-o="${m.id}">Kelola</button> <button class="sec" data-d="${m.id}">Hapus</button></td></tr>`).join('')}</table></div>`;
+$('#mf').onsubmit=async e=>{e.preventDefault();try{await ck(sb.from('meetings').insert(Object.fromEntries(new FormData(e.target))));meetings()}catch(x){alert(x.message)}};
+$$('[data-o]').forEach(b=>b.onclick=()=>detail(b.dataset.o));
+$$('[data-d]').forEach(b=>b.onclick=async()=>{if(confirm('Hapus rapat beserta seluruh absensi & fotonya?')){await ck(sb.from('meetings').delete().eq('id',b.dataset.d));meetings()}})}
+
+async function detail(id){clearInterval(timer);let R,q='',mins=3,ls,n=0;const cache={};
+$('#main').innerHTML=`<a id="back">← Kembali</a><h2 id="t" style="margin-top:8px"></h2><div id="ctl" class="card row"></div><div class="stats" id="st"></div>
+<div class="card row"><input id="q" placeholder="Cari nama…"><button id="pdf">Unduh PDF</button><button id="xls">Unduh Excel</button></div><div class="card scroll" id="tb"></div>`;
+$('#back').onclick=meetings;
+const drawCtl=()=>{const m=R.meeting;$('#t').textContent=`${m.title} — ${m.date} ${m.time.slice(0,5)} · ${m.location}`;
+if(m.status!==ls){ls=m.status;$('#ctl').innerHTML=`<span class="b ${m.status}">${ST[m.status]}</span>`+(m.status==='open'?`<button id="cl">Tutup Absensi</button><select id="mn" style="max-width:90px">${[1,2,3].map(x=>`<option ${x===mins?'selected':''}>${x}</option>`).join('')}</select>menit<button id="otp">Buat / Ganti OTP</button><span id="ov"></span>`:`<button id="op">Buka Absensi</button>`)+`<button class="sec" id="ed">Ubah Jadwal</button>`}
+if(m.status==='open'){const l=m.otp_code?Math.round((new Date(m.otp_expires)-Date.now())/1000):0;$('#ov').innerHTML=l>0?`<span class="otp">${m.otp_code}</span> <small>${l} dtk</small>`:'<small>OTP belum dibuat / kedaluwarsa</small>'}};
+const drawTb=()=>{const all=R.rows,h=all.filter(r=>r.hadir).length;
+$('#st').innerHTML=`<div>Total<b>${all.length}</b></div><div>Hadir<b>${h}</b></div><div>Belum Hadir<b>${all.length-h}</b></div>`;
+$('#tb').innerHTML=`<table><tr><th>No</th><th>Nama</th><th>Status</th><th>Waktu Absen</th><th>Bukti</th></tr>${all.filter(r=>r.name.toLowerCase().includes(q)).map(r=>`<tr><td>${r.no}</td><td>${esc(r.name)}</td><td><span class="b ${r.hadir?'open':'closed'}">${r.hadir?'HADIR':'BELUM'}</span></td><td>${fmt(r.at)}</td><td>${cache[r.aid]?`<img src="${cache[r.aid]}" height="40" style="border-radius:6px;cursor:pointer" onclick="zoom(this.src)">`:r.hadir?'…':'-'}</td></tr>`).join('')}</table>`};
+const load=async()=>{const[mt,ps,at]=await Promise.all([ck(sb.from('meetings').select('*').eq('id',id).single()),ck(sb.from('participants').select('id,no,name').eq('active',true).order('no')),ck(sb.from('attendance').select('id,participant_id,attended_at').eq('meeting_id',id))]);
+const rows=ps.map(p=>{const a=at.find(x=>x.participant_id===p.id);return{...p,hadir:!!a,at:a?.attended_at,aid:a?.id}});
+R={meeting:mt,rows};drawCtl();drawTb();
+rows.filter(r=>r.aid&&!(r.aid in cache)).forEach(async r=>{cache[r.aid]=null;const{data}=await sb.from('attendance').select('photo').eq('id',r.aid).single();cache[r.aid]=data?.photo;drawTb()})};
+$('#ctl').onchange=e=>{if(e.target.id==='mn')mins=+e.target.value};
+$('#ctl').onclick=async e=>{const i=e.target.id;try{
+if(i==='op')await ck(sb.rpc('admin_set_status',{p_id:id,p_status:'open'}));
+if(i==='cl')await ck(sb.rpc('admin_set_status',{p_id:id,p_status:'closed'}));
+if(i==='otp')await ck(sb.rpc('admin_make_otp',{p_id:id,p_min:mins}));
+if(i==='ed'){const m=R.meeting,b={title:prompt('Nama rapat',m.title),date:prompt('Tanggal (YYYY-MM-DD)',m.date),time:prompt('Jam (HH:MM)',m.time.slice(0,5)),location:prompt('Lokasi',m.location)};if(Object.values(b).includes(null))return;await ck(sb.from('meetings').update(b).eq('id',id))}
+if(i)await load()}catch(x){alert(x.message)}};
+$('#q').oninput=e=>{q=e.target.value.toLowerCase();drawTb()};
+const rows=()=>R.rows.map(r=>[r.no,r.name,r.hadir?'HADIR':'BELUM HADIR',r.at?fmt(r.at):'-']);
+$('#pdf').onclick=()=>{const m=R.meeting,h=R.rows.filter(r=>r.hadir).length,d=new jspdf.jsPDF();d.text('Laporan Absensi: '+m.title,14,15);d.setFontSize(10);d.text(`${m.date} ${m.time.slice(0,5)} | ${m.location} | Hadir ${h} dari ${R.rows.length}, belum hadir ${R.rows.length-h}`,14,22);d.autoTable({startY:27,head:[['No','Nama','Status','Waktu']],body:rows(),headStyles:{fillColor:[11,37,69]}});d.save(`absensi-${m.date}.pdf`)};
+$('#xls').onclick=()=>{const ws=XLSX.utils.aoa_to_sheet([['No','Nama','Status','Waktu','Bukti Foto'],...rows().map((r,i)=>[...r,R.rows[i].hadir?'Ada':'-'])]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Absensi');XLSX.writeFile(wb,`absensi-${R.meeting.date}.xlsx`)};
+await load();timer=setInterval(()=>{drawCtl();if(++n%4===0)load().catch(()=>{})},1000)}
+
+async function people(){clearInterval(timer);const ps=await ck(sb.from('participants').select('*').order('no'));
+$('#main').innerHTML=`<h2>Peserta (${ps.filter(p=>p.active).length} aktif)</h2><form id="pf" class="card row"><input name="name" placeholder="Nama peserta baru" required><button>Tambah</button></form>
+<div class="card scroll"><table>${ps.map(p=>`<tr><td>${p.no}</td><td>${esc(p.name)}</td><td>${p.active?'Aktif':'Nonaktif'}</td><td><button class="sec" data-e="${p.id}">Ubah</button> <button class="sec" data-t="${p.id}">${p.active?'Nonaktifkan':'Aktifkan'}</button></td></tr>`).join('')}</table></div>`;
+const go=async f=>{try{await ck(f);people()}catch(x){alert(x.message)}};
+$('#pf').onsubmit=e=>{e.preventDefault();go(sb.from('participants').insert({name:e.target.name.value.trim(),no:Math.max(0,...ps.map(p=>p.no))+1}))};
+$$('[data-e]').forEach(b=>b.onclick=()=>{const p=ps.find(x=>x.id==b.dataset.e),n=prompt('Nama peserta',p.name);if(n)go(sb.from('participants').update({name:n.trim()}).eq('id',p.id))});
+$$('[data-t]').forEach(b=>b.onclick=()=>{const p=ps.find(x=>x.id==b.dataset.t);go(sb.from('participants').update({active:!p.active}).eq('id',p.id))})}
+$('#sqlv').textContent=$('#sql').textContent;$('#cp').onclick=()=>navigator.clipboard.writeText($('#sql').textContent).then(()=>$('#cp').textContent='Tersalin ✔');
+route();
+</script></body></html>
